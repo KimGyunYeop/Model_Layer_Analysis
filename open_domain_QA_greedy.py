@@ -163,9 +163,10 @@ for prune_k in range(max_k):
             continue
 
         exp_list = parents_data["prune_indices"]
-        parents_score = parents_data["EM"]
+        # parents_score = parents_data["EM"]
         
         if exp_list == "X" :
+            parents_score = parents_data["EM"]
             if prune_k != 0:
                 continue
 
