@@ -69,10 +69,10 @@ data = datasets.load_dataset(data_dict["data_path"], data_dict["subset"], cache_
 print(data)
 
 # data_path = "meta-llama/Llama-2-7b-hf"
-data_path = "meta-llama/Llama-2-13b-hf"
+# data_path = "meta-llama/Llama-2-13b-hf"
 # data_path = "meta-llama/Llama-2-70b-hf"
 # data_path = "google/gemma-7b"
-# data_path = "meta-llama/Meta-Llama-3-8B"
+data_path = "meta-llama/Meta-Llama-3-8B"
 # data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
 # data_path = "meta-llama/Llama-2-7b-chat-hf"
 # data_path = "meta-llama/Meta-Llama-Guard-2-8B"
@@ -168,7 +168,9 @@ new_line_token = tokenizer("\n")['input_ids'][-1]
 l2d_list = []
 scaled_l2d_list = []
 cs_list = []
+self_token_attention_scores_list = []
 correct_counter = 0
+counting_gen = 0
 for test_idx in range(test_num):
     input_string = input_format.format(test_one_data[data_dict["source_col"]][test_idx])
     
@@ -190,8 +192,8 @@ for test_idx in range(test_num):
     # print(len(out["attentions"]))
     # print(len(out["attentions"][0]))
     # print(out["attentions"][0][0].shape)
-    self_token_attention_scores_list = []
     cur_self_token_attention_scores = []
+    counting_gen += len(out["attentions"])
     for i in range(len(out["attentions"])):
         cur_layer_self_token_attention_scores = []
         for j in range(len(out["attentions"][i])):
@@ -208,30 +210,22 @@ for test_idx in range(test_num):
 
             prev_self_token_attention_scores.append(cur_layer_self_token_attention_scores)
         cur_self_token_attention_scores = torch.cat([torch.tensor(prev_self_token_attention_scores), torch.tensor(cur_self_token_attention_scores)], dim=0).tolist()
-    # print(torch.tensor(cur_self_token_attention_scores))
-    # print(torch.tensor(cur_self_token_attention_scores).shape)
-    # print(torch.mean(torch.tensor(cur_self_token_attention_scores), dim=0))
-    # print(torch.mean(torch.tensor(cur_self_token_attention_scores), dim=0).shape)
-    self_token_attention_scores_list.append(torch.mean(torch.tensor(cur_self_token_attention_scores), dim=0))
-    
-    # quit()
+    self_token_attention_scores_list.extend(cur_self_token_attention_scores)
     
     
     out["hidden_states"] = list(out["hidden_states"])
-    print(len(out["hidden_states"]))
     for i in range(len(out["hidden_states"])):
         out["hidden_states"][i] = torch.cat(out["hidden_states"][i], dim=0)
         
+    
     if analysis_only_gen_token:
-        out["hidden_states"][0] = out["hidden_states"][0][:,-2:,:]
+        out["hidden_states"][0] = out["hidden_states"][0][:,-1:,:]
         
     out["hidden_states"] = torch.cat(out["hidden_states"], dim=1)
     
-    print(out["hidden_states"].shape)
     pred_with_hidden = model.lm_head(out["hidden_states"][-1,:,:])
 
     pred_token = torch.argmax(pred_with_hidden, dim=-1)
-    print(pred_token.shape)
 
     pred_string1 = tokenizer.batch_decode(pred_token.unsqueeze(0)[:,:], skip_special_tokens=True)
     print("pred_string:", pred_string1)
@@ -246,20 +240,23 @@ for test_idx in range(test_num):
     
 
     print("L2 disttance of n to n+1 hidden states")
-    l2d = torch.mean((out["hidden_states"][:-1,:,:] - out["hidden_states"][1:,:,:]).pow(2).sum(2).sqrt() ,dim=-1)
+    # l2d = torch.mean((out["hidden_states"][:-1,:,:] - out["hidden_states"][1:,:,:]).pow(2).sum(2).sqrt() ,dim=-1)
     
-    vector_distance = torch.mean((out["hidden_states"][:-1,:,:]).pow(2).sum(2).sqrt(), dim=-1)
+    # vector_distance = torch.mean((out["hidden_states"][:-1,:,:]).pow(2).sum(2).sqrt(), dim=-1)
+    l2d = (out["hidden_states"][:-1,:,:] - out["hidden_states"][1:,:,:]).pow(2).sum(2).sqrt().T
+    
+    vector_distance = (out["hidden_states"][:-1,:,:]).pow(2).sum(2).sqrt().T
     scaled_l2d = l2d/vector_distance
         
-    print(l2d)
+    print(torch.mean(l2d, dim=0))
     l2d_list.append(l2d)
     scaled_l2d_list.append(scaled_l2d)
     
 
     print("cosine similarity betwwen n and n+1 hidden states")
-    cs = F.cosine_similarity(out["hidden_states"][:-1,:,:], out["hidden_states"][1:,:,:], dim=-1)
-    cs = cs.mean(dim=-1)
-    print(cs)
+    cs = F.cosine_similarity(out["hidden_states"][:-1,:,:], out["hidden_states"][1:,:,:], dim=-1).T
+    # cs = cs.mean(dim=-1)
+    print(cs.mean(dim=0))
     cs_list.append(cs)
 
 
@@ -279,48 +276,99 @@ for test_idx in range(test_num):
     #     correct_counter += 1
     # quit()
 
+print("counting_gen:",counting_gen)
+num_layer = torch.cat(l2d_list, dim=0).shape[1]
+
 print("final_l2d:")
-final_l2d = torch.mean(torch.stack(l2d_list), dim=0)    
+# final_l2d = torch.mean(torch.stack(l2d_list), dim=0)  
+print(torch.cat(l2d_list, dim=0).shape)
+final_l2d = torch.mean(torch.cat(l2d_list, dim=0), dim=0)   
 print(final_l2d)
 
-plt.plot(final_l2d.tolist(), label="l2d")
+plt.plot(final_l2d.tolist())
+plt.title("L2 distance")
 plt.savefig(os.path.join("figs", data_path, result_txt, "l2d.png"))
+plt.xticks(range(1, num_layer+1))
 plt.clf()
 
+plt.figure(figsize=(16,8))
+plt.boxplot(torch.cat(l2d_list, dim=0).T.tolist())
+plt.title("l2d_boxplot")
+plt.xticks(range(1, num_layer+1))
+plt.savefig(os.path.join("figs", data_path, result_txt, "l2d_boxplot.png"))
+plt.clf()
+
+
 print("final_scaled_l2d:")
-final_scaled_l2d = torch.mean(torch.stack(scaled_l2d_list), dim=0)    
+print(torch.cat(scaled_l2d_list, dim=0).shape)
+final_scaled_l2d = torch.mean(torch.cat(scaled_l2d_list, dim=0), dim=0)    
 print(final_scaled_l2d)
 
-plt.plot(final_scaled_l2d.tolist(), label="scaled_l2d")
+plt.plot(final_scaled_l2d.tolist())
+plt.title("scaled L2 distance")
 plt.savefig(os.path.join("figs", data_path, result_txt, "scaled_l2d.png"))
+plt.xticks(range(1, num_layer+1))
+plt.clf()
+
+plt.figure(figsize=(16,8))
+plt.boxplot(torch.cat(scaled_l2d_list, dim=0).T.tolist())
+plt.title("scaled_l2d_boxplot")
+plt.xticks(range(1, num_layer+1))
+plt.savefig(os.path.join("figs", data_path, result_txt, "scaled_l2d_boxplot.png"))
 plt.clf()
 
 print("final_cs:")
-final_cs = torch.mean(torch.stack(cs_list), dim=0)  
+print(torch.cat(cs_list, dim=0).shape)
+final_cs = torch.mean(torch.cat(cs_list, dim=0), dim=0)  
 print(final_cs)
 
 plt.plot(final_cs.tolist(), label="cs")
+plt.title("cosine similarity")
 plt.savefig(os.path.join("figs", data_path, result_txt, "cs.png"))
+plt.xticks(range(1, num_layer+1))
 plt.clf()
 
+plt.figure(figsize=(16,8))
+plt.boxplot(torch.cat(cs_list, dim=0).T.tolist())
+plt.title("cs_boxplot")
+plt.xticks(range(1, num_layer+1))
+plt.savefig(os.path.join("figs", data_path, result_txt, "cs_boxplot.png"))
+plt.clf()
 
 print("final_rev_cs:")
-final_rev_cs = 1 - torch.mean(torch.stack(cs_list), dim=0)  
+print((1 - torch.cat(cs_list, dim=0)).shape)
+final_rev_cs = torch.mean(1 - torch.cat(cs_list, dim=0), dim=0)  
 print(final_rev_cs)
 
 plt.plot(final_rev_cs.tolist(), label="reverse_cs")
+plt.title("reverse_cosine similarity")
 plt.savefig(os.path.join("figs", data_path, result_txt, "reverse_cs.png"))
+plt.xticks(range(1, num_layer+1))
 plt.clf()
 
-
-
+plt.figure(figsize=(16,8))
+plt.boxplot((1 - torch.cat(cs_list, dim=0)).T.tolist())
+plt.title("reverse_cs_boxplot")
+plt.xticks(range(1, num_layer+1))
+plt.savefig(os.path.join("figs", data_path, result_txt, "reverse_cs_boxplot.png"))
+plt.clf()
 
 print("final_self_token_attnetion:")
-final_self_token_attnetion_scores = torch.mean(torch.stack(self_token_attention_scores_list), dim=0)  
+print(torch.tensor(self_token_attention_scores_list).shape)
+final_self_token_attnetion_scores = torch.mean(torch.tensor(self_token_attention_scores_list), dim=0)  
 print(final_self_token_attnetion_scores)
 
-plt.plot(final_self_token_attnetion_scores.tolist(), label="self_token_attnetion_scores")
+plt.plot(final_self_token_attnetion_scores.tolist())
+plt.title("self_token_attnetion_scores")
 plt.savefig(os.path.join("figs", data_path, result_txt, "self_token_attnetion_scores.png"))
+plt.xticks(range(1, num_layer+1))
+plt.clf()
+
+plt.figure(figsize=(16,8))
+plt.boxplot(torch.tensor(self_token_attention_scores_list).T.tolist())
+plt.title("self_token_attnetion_scores_boxplot")
+plt.xticks(range(1, num_layer+1))
+plt.savefig(os.path.join("figs", data_path, result_txt, "self_token_attnetion_scores_boxplot.png"))
 plt.clf()
 
 before_prune_acc = correct_counter/float(test_num)

@@ -137,6 +137,7 @@ if pi not in list(result_df["prune_indices"]):
         seq_len = input_data["input_ids"].shape[1]
 
         pred_answer = tokenizer.batch_decode(out.sequences[:,seq_len-1:], skip_special_tokens=True)[0]
+        print(tokenizer.batch_decode(out.sequences, skip_special_tokens=True))
 
         for i in range(len(test_one_data[data_dict["target_col"]][test_idx])):
             test_one_data[data_dict["target_col"]][test_idx][i] = test_one_data[data_dict["target_col"]][test_idx][i].strip().lower()
