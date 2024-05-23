@@ -30,12 +30,13 @@ def trivia_preprocessing(batch):
 torch_seed()
 gpu = 1
 device = "cuda:"+str(gpu)
+device = "auto"
 use_l2d = True
 use_cs = True
 l2d_scaling = True
 analysis_only_gen_token = True
 test_num = 1000
-add_special_tokens = True
+add_special_tokens = False
 
 result_txt = ""
 if not analysis_only_gen_token:
@@ -68,8 +69,8 @@ data = datasets.load_dataset(data_dict["data_path"], data_dict["subset"], cache_
 print(data)
 
 # data_path = "meta-llama/Llama-2-7b-hf"
-# data_path = "meta-llama/Llama-2-13b-hf"
-data_path = "meta-llama/Llama-2-70b-hf"
+data_path = "meta-llama/Llama-2-13b-hf"
+# data_path = "meta-llama/Llama-2-70b-hf"
 # data_path = "google/gemma-7b"
 # data_path = "meta-llama/Meta-Llama-3-8B"
 # data_path = "meta-llama/Meta-Llama-3-8B-Instruct"

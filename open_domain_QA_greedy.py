@@ -226,6 +226,10 @@ for prune_k in range(max_k):
                         break
                 
                 if test_idx == int(test_num*0.1):
+                    print("10% test done")
+                    print("acc = ", correct_counter/float(test_num*0.1))
+                    print("parent = ", parents_score)
+                    print( early_stop_percent, "% parent = ", parents_score * early_stop_percent)
                     if correct_counter/float(int(test_num*0.1)) < parents_score * early_stop_percent:
                         print("early stop")
                         early_stop=True
