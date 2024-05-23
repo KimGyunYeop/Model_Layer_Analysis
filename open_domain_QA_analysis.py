@@ -83,6 +83,13 @@ tokenizer = AutoTokenizer.from_pretrained(data_path)
 print(model)
 print(tokenizer)
 
+new_line_token = tokenizer("\n")['input_ids'][-1]
+new_line_token2 = tokenizer(" \n")['input_ids'][-1]
+stopping_ids = [tokenizer.eos_token_id, new_line_token, new_line_token2]
+if "Llama-3" in data_path:
+    stopping_ids.append(tokenizer.convert_tokens_to_ids("<|eot_id|>"))
+gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_token_id': stopping_ids, 'max_new_tokens': 50, 'pad_token_id': tokenizer.eos_token_id, "early_stopping":True, "temperature":0.7}
+
 prompt_format = "Q: {} \n A: {} \n"
 input_format = "Q: {} \n A:"
 
@@ -183,7 +190,6 @@ for test_idx in range(test_num):
         # print(i)
         input_data[i] = input_data[i].to(model.device) 
         
-    gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_token_id': [tokenizer.eos_token_id, new_line_token], 'max_new_tokens': 50, 'pad_token_id': tokenizer.eos_token_id, "early_stopping":True, "temperature":0.7}
     out = model.generate(**input_data, **gen_args, output_hidden_states=True, return_dict_in_generate=True, output_attentions=True)
     seq_len = input_data["input_ids"].shape[1]
 
