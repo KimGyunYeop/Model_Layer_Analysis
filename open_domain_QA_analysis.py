@@ -68,8 +68,8 @@ data = datasets.load_dataset(data_dict["data_path"], data_dict["subset"], cache_
 print(data)
 
 # data_path = "meta-llama/Llama-2-7b-hf"
-data_path = "meta-llama/Llama-2-13b-hf"
-# data_path = "meta-llama/Llama-2-70b-hf"
+# data_path = "meta-llama/Llama-2-13b-hf"
+data_path = "meta-llama/Llama-2-70b-hf"
 # data_path = "google/gemma-7b"
 # data_path = "meta-llama/Meta-Llama-3-8B"
 # data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
