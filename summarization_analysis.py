@@ -63,12 +63,12 @@ data_dict = DATAINFO[data_name]
 data = datasets.load_dataset(data_dict["data_path"], data_dict["subset"], cache_dir="./cache")
 print(data)
 
-data_path = "meta-llama/Llama-2-7b-hf"
+# data_path = "meta-llama/Llama-2-7b-hf"
 # data_path = "meta-llama/Llama-2-13b-hf"
 # data_path = "meta-llama/Llama-2-70b-hf"
 # data_path = "google/gemma-7b"
 # data_path = "meta-llama/Meta-Llama-3-8B"
-# data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
+data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
 # data_path = "meta-llama/Llama-2-7b-chat-hf"
 # data_path = "meta-llama/Meta-Llama-Guard-2-8B"
 model = AutoModelForCausalLM.from_pretrained(data_path, torch_dtype=torch.bfloat16, device_map=device, cache_dir="./cache")
@@ -104,7 +104,7 @@ input_format = """
 
 """
 
-prompt_data_num = 1
+prompt_data_num = 0
 if prompt_data_num > 0:
     # if data_dict["preprocessing"] is not None:
     #     prompt_data = data["train"].map(data_dict["preprocessing"])
