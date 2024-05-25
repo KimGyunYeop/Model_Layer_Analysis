@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 import os
 
 import evaluate
+import argparse
 
 def torch_seed(random_seed=424):
 
@@ -29,16 +30,35 @@ def trivia_preprocessing(batch):
     
     return batch
 
+# data_path = "meta-llama/Llama-2-7b-hf"
+# data_path = "meta-llama/Llama-2-13b-hf"
+# data_path = "meta-llama/Llama-2-70b-hf"
+# data_path = "google/gemma-7b"
+# data_path = "meta-llama/Meta-Llama-3-8B"
+# data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
+# data_path = "meta-llama/Llama-2-7b-chat-hf"
+# data_path = "meta-llama/Meta-Llama-Guard-2-8B"
+argparser = argparse.ArgumentParser()
+argparser.add_argument("--data_name", type=str, default="cnndm")
+argparser.add_argument("--model_path", type=str, default="meta-llama/Llama-2-7b-hf")
+argparser.add_argument("--result_file_name", type=str, default="result_df.csv")
+argparser.add_argument("--test_num", type=int, default=1000)
+argparser.add_argument("--gpu", type=int, default=0)
+argparser.add_argument("--auto", default=False, action="store_true")
+args = argparser.parse_args()
+
 torch_seed()
-gpu = 1
+gpu = args.gpu
 device = "cuda:"+str(gpu)
-device = "auto"
+if args.auto:
+    device = "auto"
 use_l2d = True
 use_cs = True
 l2d_scaling = True
 analysis_only_gen_token = True
-test_num = 1000
+test_num = args.test_num
 add_special_tokens = False
+data_name = "cnndm"
 
 result_txt = ""
 if not analysis_only_gen_token:
@@ -48,7 +68,6 @@ if add_special_tokens:
 
 result_txt += str(test_num)
 
-data_name = "cnndm"
 DATAINFO = {
     "cnndm": {
         "data_path": "abisee/cnn_dailymail",
@@ -71,6 +90,7 @@ print(data)
 data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
 # data_path = "meta-llama/Llama-2-7b-chat-hf"
 # data_path = "meta-llama/Meta-Llama-Guard-2-8B"
+data_path = args.model_path
 model = AutoModelForCausalLM.from_pretrained(data_path, torch_dtype=torch.bfloat16, device_map=device, cache_dir="./cache")
 print(model.device)
 
