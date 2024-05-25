@@ -87,14 +87,16 @@ if "Llama-3" in data_path:
     stopping_ids.append(tokenizer.convert_tokens_to_ids("<|eot_id|>"))
 gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_token_id': stopping_ids, 'max_new_tokens': 300, 'pad_token_id': tokenizer.eos_token_id, "early_stopping":True, "temperature":0.7}
 
-prompt_format = """### 
+prompt_format = """
 ### Input:
 {}
 
 ### Summary:
 {}
+
+
 """
-input_format = """###
+input_format = """
 ### Input:
 {}
 
@@ -102,7 +104,7 @@ input_format = """###
 
 """
 
-prompt_data_num = 0
+prompt_data_num = 1
 if prompt_data_num > 0:
     # if data_dict["preprocessing"] is not None:
     #     prompt_data = data["train"].map(data_dict["preprocessing"])
