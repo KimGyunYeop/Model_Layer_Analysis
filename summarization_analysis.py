@@ -190,7 +190,7 @@ for test_idx in range(test_num):
     input_string = input_format.format(test_one_data[data_dict["source_col"]][test_idx]).strip()
     targets.append(test_one_data[data_dict["target_col"]][test_idx].strip())
     
-    print("\n\n", test_one_data[data_dict["source_col"]][test_idx])
+    # print("\n\n", test_one_data[data_dict["source_col"]][test_idx])
 
     input_data = tokenizer(prompt_string+" "+input_string, return_tensors="pt", add_special_tokens=add_special_tokens)
     # print(input_data)
@@ -243,16 +243,16 @@ for test_idx in range(test_num):
 
     pred_token = torch.argmax(pred_with_hidden, dim=-1)
 
-    pred_string1 = tokenizer.batch_decode(pred_token.unsqueeze(0)[:,:], skip_special_tokens=True)
-    print("pred_string:", pred_string1)
+    # pred_string1 = tokenizer.batch_decode(pred_token.unsqueeze(0)[:,:], skip_special_tokens=True)
+    # print("pred_string:", pred_string1)
 
-    for i in range(out["hidden_states"].size(0)):
-        pred_with_hidden = model.lm_head(out["hidden_states"][i,:,:])
+    # for i in range(out["hidden_states"].size(0)):
+    #     pred_with_hidden = model.lm_head(out["hidden_states"][i,:,:])
 
-        pred_token = torch.argmax(pred_with_hidden, dim=-1)
+    #     pred_token = torch.argmax(pred_with_hidden, dim=-1)
 
-        pred_string1 = tokenizer.batch_decode(pred_token.unsqueeze(0)[:,:], skip_special_tokens=True)
-        print(i, pred_string1)
+    #     pred_string1 = tokenizer.batch_decode(pred_token.unsqueeze(0)[:,:], skip_special_tokens=True)
+    #     print(i, pred_string1)
     
 
     print("L2 disttance of n to n+1 hidden states")
@@ -274,6 +274,9 @@ for test_idx in range(test_num):
     # cs = cs.mean(dim=-1)
     print(cs.mean(dim=0))
     cs_list.append(cs)
+
+    print("reference:\n", targets[-1])
+    print("prediction:\n", pred_answer)
 
 rouge = evaluate.load('rouge')
 results = rouge.compute(predictions=preds, references=targets)
