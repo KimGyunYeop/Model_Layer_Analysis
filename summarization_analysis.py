@@ -52,7 +52,7 @@ data_name = "cnndm"
 DATAINFO = {
     "cnndm": {
         "data_path": "abisee/cnn_dailymail",
-        "subset": None,
+        "subset": "3.0.0",
         "source_col": "article",
         "target_col": "highlights",
         "preprocessing": None,
