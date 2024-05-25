@@ -105,7 +105,7 @@ stopping_ids = [tokenizer.eos_token_id]
 # stopping_ids.append(new_line_token2)
 if "Llama-3" in data_path:
     stopping_ids.append(tokenizer.convert_tokens_to_ids("<|eot_id|>"))
-gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_token_id': stopping_ids, 'max_new_tokens': 300, 'pad_token_id': tokenizer.eos_token_id, "early_stopping":True, "temperature":0.7}
+gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_token_id': stopping_ids, 'max_new_tokens': 200, 'pad_token_id': tokenizer.eos_token_id, "early_stopping":True, "temperature":0.7}
 
 prompt_format = """
 ### Input:
