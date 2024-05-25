@@ -117,14 +117,13 @@ prompt_format = """
 ### Summary:
 {}
 
-
 """
+
 input_format = """
-### Input:
+### Conversation:
 {}
 
 ### Summary:
-
 """
 
 prompt_data_num = 0
