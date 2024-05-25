@@ -42,10 +42,14 @@ argparser.add_argument("--test_num", type=int, default=500)
 argparser.add_argument("--max_k", type=int, default=10)
 argparser.add_argument("--early_stop_percent", type=float, default=0.75)
 argparser.add_argument("--gpu", type=int, default=0)
+argparser.add_argument("--auto", default=False, action="store_true")
 args = argparser.parse_args()
 
 torch_seed()
+
 device = "cuda:"+str(args.gpu)
+if args.auto:
+    device = "auto"
 result_file_name = "result_df.csv"
 test_num = args.test_num
 max_k = args.max_k
@@ -138,6 +142,7 @@ if pi not in list(result_df["prune_indices"]):
         seq_len = input_data["input_ids"].shape[1]
 
         pred_answer = tokenizer.batch_decode(out.sequences[:,seq_len-1:], skip_special_tokens=True)[0]
+        # print(pred_answer)
         # print(tokenizer.batch_decode(out.sequences, skip_special_tokens=True))
 
         for i in range(len(test_one_data[data_dict["target_col"]][test_idx])):
@@ -145,7 +150,7 @@ if pi not in list(result_df["prune_indices"]):
 
         # print(pred_answer, test_one_data[data_dict["target_col"]][test_idx])
         for i in test_one_data[data_dict["target_col"]][test_idx]:
-            if i.lower() in pred_answer.lower():
+            if i.strip().lower() in pred_answer.lower():
                 # print("correct")
                 correct_counter += 1
                 break

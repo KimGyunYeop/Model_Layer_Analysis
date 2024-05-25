@@ -8,6 +8,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 import os
+from transformers import BitsAndBytesConfig
 
 def torch_seed(random_seed=424):
 
@@ -76,7 +77,9 @@ data_path = "meta-llama/Llama-2-70b-hf"
 # data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
 # data_path = "meta-llama/Llama-2-7b-chat-hf"
 # data_path = "meta-llama/Meta-Llama-Guard-2-8B"
-model = AutoModelForCausalLM.from_pretrained(data_path, torch_dtype=torch.bfloat16, device_map=device, cache_dir="./cache")
+# data_path = "meta-llama/Meta-Llama-3-70B"
+quantization_config = BitsAndBytesConfig(load_in_4bit=True, llm_int8_enable_fp32_cpu_offload=True)
+model = AutoModelForCausalLM.from_pretrained(data_path, quantization_config=quantization_config, device_map=device, cache_dir="./cache")
 print(model.device)
 
 tokenizer = AutoTokenizer.from_pretrained(data_path)
@@ -93,7 +96,7 @@ gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_toke
 prompt_format = "Q: {} \n A: {} \n"
 input_format = "Q: {} \n A:"
 
-prompt_data_num = 5
+prompt_data_num = 3
 if prompt_data_num > 0:
     # if data_dict["preprocessing"] is not None:
     #     prompt_data = data["train"].map(data_dict["preprocessing"])
@@ -107,62 +110,62 @@ else:
 
 
 # Model Anlysis
-q_proj = []
-k_proj = []
-v_proj = []
-o_proj = []
-mlp_gate_proj = []
-mlp_up_proj = []
-mlp_down_proj = []
-for i in model.model.layers:
-    # print(i.self_attn.q_proj.weight.data)
-    # print(i.self_attn.k_proj.weight.data)
-    # print(i.self_attn.v_proj.weight.data)
-    # print(i.self_attn.o_proj.weight.data)
+# q_proj = []
+# k_proj = []
+# v_proj = []
+# o_proj = []
+# mlp_gate_proj = []
+# mlp_up_proj = []
+# mlp_down_proj = []
+# for i in model.model.layers:
+#     # print(i.self_attn.q_proj.weight.data)
+#     # print(i.self_attn.k_proj.weight.data)
+#     # print(i.self_attn.v_proj.weight.data)
+#     # print(i.self_attn.o_proj.weight.data)
     
-    # print(i.mlp.gate_proj.weight.data)
-    # print(i.mlp.up_proj.weight.data)
-    # print(i.mlp.down_proj.weight.data)
+#     # print(i.mlp.gate_proj.weight.data)
+#     # print(i.mlp.up_proj.weight.data)
+#     # print(i.mlp.down_proj.weight.data)
 
-    q_proj.append(torch.mean(torch.abs(i.self_attn.q_proj.weight.data)).item())
-    k_proj.append(torch.mean(torch.abs(i.self_attn.k_proj.weight.data)).item())
-    v_proj.append(torch.mean(torch.abs(i.self_attn.v_proj.weight.data)).item())
-    o_proj.append(torch.mean(torch.abs(i.self_attn.o_proj.weight.data)).item())
-    mlp_gate_proj.append(torch.mean(torch.abs(i.mlp.gate_proj.weight.data)).item())
-    mlp_up_proj.append(torch.mean(torch.abs(i.mlp.up_proj.weight.data)).item())
-    mlp_down_proj.append(torch.mean(torch.abs(i.mlp.down_proj.weight.data)).item())
+#     q_proj.append(torch.mean(torch.abs(i.self_attn.q_proj.weight.data.detach().cpu())).item())
+#     k_proj.append(torch.mean(torch.abs(i.self_attn.k_proj.weight.data.detach().cpu())).item())
+#     v_proj.append(torch.mean(torch.abs(i.self_attn.v_proj.weight.data.detach().cpu())).item())
+#     o_proj.append(torch.mean(torch.abs(i.self_attn.o_proj.weight.data.detach().cpu())).item())
+#     mlp_gate_proj.append(torch.mean(torch.abs(i.mlp.gate_proj.weight.data.detach().cpu())).item())
+#     mlp_up_proj.append(torch.mean(torch.abs(i.mlp.up_proj.weight.data.detach().cpu())).item())
+#     mlp_down_proj.append(torch.mean(torch.abs(i.mlp.down_proj.weight.data.detach().cpu())).item())
     
-print("q_proj_abs", q_proj)
-print("k_proj_abs", k_proj)
-print("v_proj_abs", v_proj)
-print("o_proj_abs", o_proj)
-print("mlp_gate_proj_abs", mlp_gate_proj)
-print("mlp_up_proj_abs", mlp_up_proj)
-print("mlp_down_proj_abs", mlp_down_proj)
+# print("q_proj_abs", q_proj)
+# print("k_proj_abs", k_proj)
+# print("v_proj_abs", v_proj)
+# print("o_proj_abs", o_proj)
+# print("mlp_gate_proj_abs", mlp_gate_proj)
+# print("mlp_up_proj_abs", mlp_up_proj)
+# print("mlp_down_proj_abs", mlp_down_proj)
 
 os.makedirs("figs", exist_ok=True)
 os.makedirs( os.path.join("figs", data_path, result_txt), exist_ok=True)
-plt.plot(q_proj, label="q_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "q_proj.png"))
-plt.clf()
-plt.plot(k_proj, label="k_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "k_proj.png"))
-plt.clf()
-plt.plot(v_proj, label="v_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "v_proj.png"))
-plt.clf()
-plt.plot(o_proj, label="o_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "o_proj.png"))
-plt.clf()
-plt.plot(mlp_gate_proj, label="mlp_gate_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "mlp_gate_proj.png"))
-plt.clf()
-plt.plot(mlp_up_proj, label="mlp_up_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "mlp_up_proj.png"))
-plt.clf()
-plt.plot(mlp_down_proj, label="mlp_down_proj")
-plt.savefig(os.path.join("figs", data_path, result_txt, "mlp_down_proj.png"))
-plt.clf()
+# plt.plot(q_proj, label="q_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "q_proj.png"))
+# plt.clf()
+# plt.plot(k_proj, label="k_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "k_proj.png"))
+# plt.clf()
+# plt.plot(v_proj, label="v_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "v_proj.png"))
+# plt.clf()
+# plt.plot(o_proj, label="o_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "o_proj.png"))
+# plt.clf()
+# plt.plot(mlp_gate_proj, label="mlp_gate_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "mlp_gate_proj.png"))
+# plt.clf()
+# plt.plot(mlp_up_proj, label="mlp_up_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "mlp_up_proj.png"))
+# plt.clf()
+# plt.plot(mlp_down_proj, label="mlp_down_proj")
+# plt.savefig(os.path.join("figs", data_path, result_txt, "mlp_down_proj.png"))
+# plt.clf()
 
 
 # Experiment Analysis
@@ -189,7 +192,8 @@ for test_idx in range(test_num):
     for i in input_data.keys():
         # print(i)
         input_data[i] = input_data[i].to(model.device) 
-        
+    
+    print(input_data["input_ids"])
     out = model.generate(**input_data, **gen_args, output_hidden_states=True, return_dict_in_generate=True, output_attentions=True)
     seq_len = input_data["input_ids"].shape[1]
 
@@ -215,7 +219,7 @@ for test_idx in range(test_num):
                 cur_layer_self_token_attention_scores.append(torch.mean(out["attentions"][0][j][:,:,k,k]).item())
 
             prev_self_token_attention_scores.append(cur_layer_self_token_attention_scores)
-        cur_self_token_attention_scores = torch.cat([torch.tensor(prev_self_token_attention_scores), torch.tensor(cur_self_token_attention_scores)], dim=0).tolist()
+        cur_self_token_attention_scores = torch.cat([torch.tensor(prev_self_token_attention_scores), torch.tensor(cur_self_token_attention_scores)], dim=0).detach().cpu().tolist()
     self_token_attention_scores_list.extend(cur_self_token_attention_scores)
     
     
@@ -255,20 +259,21 @@ for test_idx in range(test_num):
     scaled_l2d = l2d/vector_distance
         
     print(torch.mean(l2d, dim=0))
-    l2d_list.append(l2d)
-    scaled_l2d_list.append(scaled_l2d)
+    l2d_list.append(l2d.detach().cpu())
+    scaled_l2d_list.append(scaled_l2d.detach().cpu())
     
 
     print("cosine similarity betwwen n and n+1 hidden states")
     cs = F.cosine_similarity(out["hidden_states"][:-1,:,:], out["hidden_states"][1:,:,:], dim=-1).T
     # cs = cs.mean(dim=-1)
     print(cs.mean(dim=0))
-    cs_list.append(cs)
+    cs_list.append(cs.detach().cpu())
 
 
     for i in range(len(test_one_data[data_dict["target_col"]][test_idx])):
         test_one_data[data_dict["target_col"]][test_idx][i] = test_one_data[data_dict["target_col"]][test_idx][i].strip().lower()
 
+    print(input_string)
     print(pred_answer, test_one_data[data_dict["target_col"]][test_idx])
     for i in test_one_data[data_dict["target_col"]][test_idx]:
         if i.lower() in pred_answer.lower():

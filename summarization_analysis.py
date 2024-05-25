@@ -9,6 +9,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import os
 
+import evaluate
+
 def torch_seed(random_seed=424):
 
     torch.manual_seed(random_seed)
@@ -46,21 +48,14 @@ if add_special_tokens:
 
 result_txt += str(test_num)
 
-data_name = "nq_open"
+data_name = "cnndm"
 DATAINFO = {
-    "nq_open": {
-        "data_path": "nq_open",
+    "cnndm": {
+        "data_path": "abisee/cnn_dailymail",
         "subset": None,
-        "source_col": "question",
-        "target_col": "answer",
+        "source_col": "article",
+        "target_col": "highlights",
         "preprocessing": None,
-    },
-    "trivia_qa": {
-        "data_path": "trivia_qa",
-        "subset": "rc",
-        "source_col": "question",
-        "target_col": "answer",
-        "preprocessing": trivia_preprocessing,
     }
 }
 data_dict = DATAINFO[data_name]
@@ -68,9 +63,9 @@ data_dict = DATAINFO[data_name]
 data = datasets.load_dataset(data_dict["data_path"], data_dict["subset"], cache_dir="./cache")
 print(data)
 
-# data_path = "meta-llama/Llama-2-7b-hf"
+data_path = "meta-llama/Llama-2-7b-hf"
 # data_path = "meta-llama/Llama-2-13b-hf"
-data_path = "meta-llama/Llama-2-70b-hf"
+# data_path = "meta-llama/Llama-2-70b-hf"
 # data_path = "google/gemma-7b"
 # data_path = "meta-llama/Meta-Llama-3-8B"
 # data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
@@ -90,20 +85,31 @@ if "Llama-3" in data_path:
     stopping_ids.append(tokenizer.convert_tokens_to_ids("<|eot_id|>"))
 gen_args = {'do_sample': True, 'top_k': 10, 'num_return_sequences': 1, 'eos_token_id': stopping_ids, 'max_new_tokens': 50, 'pad_token_id': tokenizer.eos_token_id, "early_stopping":True, "temperature":0.7}
 
-prompt_format = "Q: {} \n A: {} \n"
-input_format = "Q: {} \n A:"
+prompt_format = """### 
+### Input:
+{}
 
-prompt_data_num = 5
+### Summary:
+{}
+"""
+input_format = """###
+### Input:
+{}
+
+### Summary:
+"""
+
+prompt_data_num = 0
 if prompt_data_num > 0:
     # if data_dict["preprocessing"] is not None:
     #     prompt_data = data["train"].map(data_dict["preprocessing"])
     prompt_data = data["train"][:prompt_data_num]
     print(prompt_data)
-    prompt_string = " ".join([prompt_format.format(prompt_data[data_dict["source_col"]][i] , prompt_data[data_dict["target_col"]][i][0]) for i in range(prompt_data_num)])
+    prompt_string = " ".join([prompt_format.format(prompt_data[data_dict["source_col"]][i].strip() , prompt_data[data_dict["target_col"]][i][0]) for i in range(prompt_data_num)])
     print(prompt_string)
-    prompt_string = "Answer these questions: \n " + prompt_string
+    prompt_string = "Instruction: \nSummarize the following conversation." + prompt_string
 else:
-    prompt_string = "Answer these questions: \n "
+    prompt_string = "Instruction: \nSummarize the following conversation.\n"
 
 
 # Model Anlysis
@@ -178,8 +184,11 @@ cs_list = []
 self_token_attention_scores_list = []
 correct_counter = 0
 counting_gen = 0
+targets = []
+preds = []
 for test_idx in range(test_num):
-    input_string = input_format.format(test_one_data[data_dict["source_col"]][test_idx])
+    input_string = input_format.format(test_one_data[data_dict["source_col"]][test_idx]).strip()
+    targets.append(test_one_data[data_dict["target_col"]][test_idx].strip())
     
     print("\n\n", test_one_data[data_dict["source_col"]][test_idx])
 
@@ -193,7 +202,8 @@ for test_idx in range(test_num):
     out = model.generate(**input_data, **gen_args, output_hidden_states=True, return_dict_in_generate=True, output_attentions=True)
     seq_len = input_data["input_ids"].shape[1]
 
-    pred_answer = tokenizer.batch_decode(out.sequences[:,seq_len-1:], skip_special_tokens=True)[0]
+    pred_answer = tokenizer.batch_decode(out.sequences[:,seq_len:], skip_special_tokens=True)[0].strip()
+    preds.append(pred_answer.strip())
     # print(out.keys())
     # print(len(out["attentions"]))
     # print(len(out["attentions"][0]))
@@ -265,22 +275,9 @@ for test_idx in range(test_num):
     print(cs.mean(dim=0))
     cs_list.append(cs)
 
-
-    for i in range(len(test_one_data[data_dict["target_col"]][test_idx])):
-        test_one_data[data_dict["target_col"]][test_idx][i] = test_one_data[data_dict["target_col"]][test_idx][i].strip().lower()
-
-    print(pred_answer, test_one_data[data_dict["target_col"]][test_idx])
-    for i in test_one_data[data_dict["target_col"]][test_idx]:
-        if i.lower() in pred_answer.lower():
-            print("correct")
-            correct_counter += 1
-            break
-        
-    # input()
-        
-    # if str(test_one_data["answer"][test_idx]) in pred_string[0].split(":")[-1].lower():
-    #     correct_counter += 1
-    # quit()
+rouge = evaluate.load('rouge')
+results = rouge.compute(predictions=preds, references=targets)
+print(results)
 
 print("counting_gen:",counting_gen)
 num_layer = torch.cat(l2d_list, dim=0).shape[1]
