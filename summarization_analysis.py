@@ -11,6 +11,7 @@ import os
 
 import evaluate
 import argparse
+from transformers import BitsAndBytesConfig
 
 def torch_seed(random_seed=424):
 
@@ -91,7 +92,9 @@ data_path = "meta-llama/Meta-Llama-3-8B-Instruct"
 # data_path = "meta-llama/Llama-2-7b-chat-hf"
 # data_path = "meta-llama/Meta-Llama-Guard-2-8B"
 data_path = args.model_path
-model = AutoModelForCausalLM.from_pretrained(data_path, torch_dtype=torch.bfloat16, device_map=device, cache_dir="./cache")
+quantization_config = BitsAndBytesConfig(load_in_4bit=True, llm_int8_enable_fp32_cpu_offload=True)
+# model = AutoModelForCausalLM.from_pretrained(data_path, torch_dtype=torch.bfloat16, device_map=device, cache_dir="./cache")
+model = AutoModelForCausalLM.from_pretrained(data_path, quantization_config=quantization_config, device_map=device, cache_dir="./cache")
 print(model.device)
 
 tokenizer = AutoTokenizer.from_pretrained(data_path)
